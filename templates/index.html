@@ -1,35 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Messenger App</title>
+    <title>Messenger Clone</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        #chat { height: 300px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; height: 100vh; margin: 0; }
+        #auth-screen, #chat-screen { width: 100%; max-width: 400px; background: white; padding: 20px; margin-top: 50px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #chat-screen { display: none; }
+        #chat-box { height: 300px; border: 1px solid #ddd; overflow-y: scroll; margin-bottom: 10px; padding: 10px; background: #e5ddd5; }
+        .msg { background: #fff; padding: 8px; border-radius: 5px; margin-bottom: 5px; width: fit-content; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #0084ff; color: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>Messenger App</h1>
-    <div id="chat"></div>
+
+<div id="auth-screen">
+    <h3>Login</h3>
+    <input id="phone" placeholder="Enter Phone (e.g. +201012345678)">
+    <button onclick="login()">Send OTP</button>
+</div>
+
+<div id="chat-screen">
+    <div id="chat-box"></div>
     <input id="msg" placeholder="Type a message...">
     <button onclick="sendMessage()">Send</button>
+</div>
 
-    <script>
-        const socket = io();
+<script>
+    const socket = io();
+    let currentToken = "";
 
-        // عرض الرسائل القادمة من السيرفر
-        socket.on('new_message', function(data) {
-            const chat = document.getElementById('chat');
-            chat.innerHTML += `<p><b>Friend:</b> ${data.body}</p>`;
+    async function login() {
+        const phone = document.getElementById('phone').value;
+        // 1. طلب تسجيل الدخول من الـ Backend
+        const response = await fetch('/auth/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({phone_number: phone})
         });
+        alert("OTP Sent! Check server console for code.");
+        
+        // هنا المفروض تطلب الـ OTP وتعمل Verify، للتبسيط سننتقل للشات مباشرة
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('chat-screen').style.display = 'block';
+    }
 
-        // إرسال رسالة
-        function sendMessage() {
-            const body = document.getElementById('msg').value;
-            socket.emit('send_message', { recipient_id: 1, body: body }); // تأكد من الـ recipient_id
-            document.getElementById('msg').value = '';
-        }
-    </script>
+    socket.on('new_message', (data) => {
+        const box = document.getElementById('chat-box');
+        box.innerHTML += `<div class="msg">${data.body}</div>`;
+    });
+
+    function sendMessage() {
+        const msg = document.getElementById('msg').value;
+        socket.emit('send_message', { recipient_id: 1, body: msg });
+        document.getElementById('msg').value = '';
+    }
+</script>
 </body>
 </html>
