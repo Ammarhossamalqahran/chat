@@ -1,59 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Messenger Clone</title>
+    <meta charset="UTF-8">
+    <title>WhatsApp Clone</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; height: 100vh; margin: 0; }
-        #auth-screen, #chat-screen { width: 100%; max-width: 400px; background: white; padding: 20px; margin-top: 50px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #chat-screen { display: none; }
-        #chat-box { height: 300px; border: 1px solid #ddd; overflow-y: scroll; margin-bottom: 10px; padding: 10px; background: #e5ddd5; }
-        .msg { background: #fff; padding: 8px; border-radius: 5px; margin-bottom: 5px; width: fit-content; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #0084ff; color: white; border: none; cursor: pointer; }
+        body { font-family: 'Segoe UI', sans-serif; background: #e5ddd5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { width: 100%; max-width: 400px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #25D366; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #chat-area { display: none; }
+        #chat-box { height: 350px; overflow-y: scroll; background: #f0f2f5; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .msg { background: #dcf8c6; padding: 8px; margin: 5px; border-radius: 10px; max-width: 80%; }
     </style>
 </head>
 <body>
 
-<div id="auth-screen">
-    <h3>Login</h3>
-    <input id="phone" placeholder="Enter Phone (e.g. +201012345678)">
-    <button onclick="login()">Send OTP</button>
-</div>
+<div class="container">
+    <div id="auth-box">
+        <h2 id="title">Login / Signup</h2>
+        <input id="phone" placeholder="Phone (e.g. +201012345678)">
+        <button id="btn-otp" onclick="requestOtp()">Send OTP</button>
+        
+        <div id="otp-area" style="display:none;">
+            <input id="otp" placeholder="Enter 6-digit OTP">
+            <button onclick="verifyOtp()">Verify</button>
+        </div>
+    </div>
 
-<div id="chat-screen">
-    <div id="chat-box"></div>
-    <input id="msg" placeholder="Type a message...">
-    <button onclick="sendMessage()">Send</button>
+    <div id="chat-area">
+        <div id="chat-box"></div>
+        <input id="msg" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
 </div>
 
 <script>
     const socket = io();
-    let currentToken = "";
+    let userToken = "";
+    let userPhone = "";
 
-    async function login() {
-        const phone = document.getElementById('phone').value;
-        // 1. طلب تسجيل الدخول من الـ Backend
-        const response = await fetch('/auth/signup', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({phone_number: phone})
-        });
-        alert("OTP Sent! Check server console for code.");
-        
-        // هنا المفروض تطلب الـ OTP وتعمل Verify، للتبسيط سننتقل للشات مباشرة
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('chat-screen').style.display = 'block';
+    async function requestOtp() {
+        userPhone = document.getElementById('phone').value;
+        await fetch('/auth/signup', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({phone_number: userPhone})});
+        document.getElementById('otp-area').style.display = 'block';
+        document.getElementById('btn-otp').style.display = 'none';
+        alert("OTP sent! Check terminal/console.");
+    }
+
+    async function verifyOtp() {
+        const otp = document.getElementById('otp').value;
+        const res = await fetch('/auth/verify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({phone_number: userPhone, otp: otp})});
+        const data = await res.json();
+        if(data.token) {
+            userToken = data.token;
+            socket.emit('authenticate', { token: userToken });
+            document.getElementById('auth-box').style.display = 'none';
+            document.getElementById('chat-area').style.display = 'block';
+        } else { alert("Wrong OTP!"); }
     }
 
     socket.on('new_message', (data) => {
-        const box = document.getElementById('chat-box');
-        box.innerHTML += `<div class="msg">${data.body}</div>`;
+        document.getElementById('chat-box').innerHTML += `<div class="msg">${data.body}</div>`;
     });
 
     function sendMessage() {
-        const msg = document.getElementById('msg').value;
-        socket.emit('send_message', { recipient_id: 1, body: msg });
+        const body = document.getElementById('msg').value;
+        socket.emit('send_message', { recipient_id: 1, body: body });
         document.getElementById('msg').value = '';
     }
 </script>
