@@ -1,1 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Messenger App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #chat { height: 300px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Messenger App</h1>
+    <div id="chat"></div>
+    <input id="msg" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
 
+    <script>
+        const socket = io();
+
+        // عرض الرسائل القادمة من السيرفر
+        socket.on('new_message', function(data) {
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<p><b>Friend:</b> ${data.body}</p>`;
+        });
+
+        // إرسال رسالة
+        function sendMessage() {
+            const body = document.getElementById('msg').value;
+            socket.emit('send_message', { recipient_id: 1, body: body }); // تأكد من الـ recipient_id
+            document.getElementById('msg').value = '';
+        }
+    </script>
+</body>
+</html>
