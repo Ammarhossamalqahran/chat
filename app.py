@@ -34,11 +34,10 @@ SocketIO events (server → client)
   typing         { sender_id }               – Forwarded to recipient room.
   error          { error }                   – Generic error envelope.
 """
-from flask import Flask, render_template  # أضفنا render_template هنا
 import eventlet
 eventlet.monkey_patch()  # Must be the very first call before other imports
 
-from flask import Flask
+from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from models import User, db
@@ -109,15 +108,15 @@ def _room_name(user_id: int) -> str:
 # ---------------------------------------------------------------------------
 
 @socketio.on("connect")
-def on_connect():
+def on_connect(auth):  # FIX: accepts the 'auth' argument passed by Flask-SocketIO
     """Client connected – wait for an 'authenticate' event."""
-    print(f"[WS] Client connected: {socketio.sid}")
+    print(f"[WS] Client connected: {request.sid}")  # FIX: use request.sid
 
 
 @socketio.on("disconnect")
 def on_disconnect():
     """Clean up presence maps when a client drops."""
-    sid = socketio.sid
+    sid = request.sid  # FIX: use request.sid
     user_id = _socket_to_user.pop(sid, None)
     if user_id is not None:
         _user_to_socket.pop(user_id, None)
@@ -146,7 +145,7 @@ def on_authenticate(data: dict):
         emit("auth_error", {"error": "Invalid or expired token."})
         return
 
-    sid = socketio.sid
+    sid = request.sid  # FIX: use request.sid
     _socket_to_user[sid] = user.id
     _user_to_socket[user.id] = sid
     join_room(_room_name(user.id))
@@ -174,7 +173,7 @@ def on_send_message(data: dict):
         "body":         "<text up to 4096 chars>"
     }
     """
-    sid = socketio.sid
+    sid = request.sid  # FIX: use request.sid
     sender_id = _socket_to_user.get(sid)
     if not sender_id:
         emit("error", {"error": "Not authenticated."})
@@ -226,7 +225,7 @@ def on_mark_read(data: dict):
     ----------------
     { "message_id": <int> }
     """
-    sid = socketio.sid
+    sid = request.sid  # FIX: use request.sid
     user_id = _socket_to_user.get(sid)
     if not user_id:
         emit("error", {"error": "Not authenticated."})
@@ -260,7 +259,7 @@ def on_typing(data: dict):
     ----------------
     { "recipient_id": <int> }
     """
-    sid = socketio.sid
+    sid = request.sid  # FIX: use request.sid
     sender_id = _socket_to_user.get(sid)
     if not sender_id:
         return
@@ -299,7 +298,6 @@ def get_history(other_user_id: int):
     200 – JSON array of message objects.
     401 – Unauthenticated.
     """
-    from flask import jsonify, request
     from routes import _resolve_token
 
     auth_header = request.headers.get("Authorization", "")
@@ -342,9 +340,12 @@ def get_history(other_user_id: int):
 
     return jsonify([m.to_dict() for m in messages]), 200
 
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html")  # FIX: render_template correctly imported at top
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
