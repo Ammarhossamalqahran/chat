@@ -34,7 +34,7 @@ SocketIO events (server → client)
   typing         { sender_id }               – Forwarded to recipient room.
   error          { error }                   – Generic error envelope.
 """
-
+from flask import Flask, render_template  # أضفنا render_template هنا
 import eventlet
 eventlet.monkey_patch()  # Must be the very first call before other imports
 
@@ -342,7 +342,9 @@ def get_history(other_user_id: int):
 
     return jsonify([m.to_dict() for m in messages]), 200
 
-
+@app.route("/")
+def index():
+    return render_template("index.html")
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
